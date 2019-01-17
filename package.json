@@ -1,0 +1,43 @@
+{
+  "name": "@nebulario/core-plugin-request",
+  "version": "1.0.1-build-server-services-dev",
+  "description": "Request handler for plugins",
+  "main": "./dist/index.js",
+  "repository": "github.com:vicjicaman/core-plugin-request.git",
+  "author": "Victor Jimenez <vic@nodeflow.io>",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-core": "6",
+    "babel-loader": "^7.1.2",
+    "babel-plugin-dynamic-import-webpack": "^1.0.2",
+    "babel-plugin-syntax-dynamic-import": "^6.18.0",
+    "babel-plugin-transform-runtime": "^6.23.0",
+    "babel-preset-env": "^1.6.1",
+    "babel-preset-react": "^6.24.1",
+    "babel-preset-stage-0": "^6.24.1",
+    "babel-preset-stage-2": "^6.24.1",
+    "npm-run-all": "^4.1.2",
+    "uglifyjs-webpack-plugin": "^1.1.2",
+    "webpack": "^3.8.1",
+    "webpack-bundle-analyzer": "^2.9.1",
+    "webpack-node-externals": "^1.6.0"
+  },
+  "scripts": {
+    "clean": "rm -Rf ./dist",
+    "build:prod": "yarn clean && webpack --config webpack.config.js --env.production ",
+    "build:dev": "yarn clean && webpack --config webpack.config.js --env.development ",
+    "start:prod": "NODE_ENV=\"production\" node ./dist/index.js",
+    "start:dev": "NODE_ENV=\"development\" node ./dist/index.js",
+    "build:watch:prod": "yarn build:prod --watch",
+    "build:watch:dev": "yarn build:dev --watch",
+    "analyze": "webpack --config webpack.config.js --env.analyze"
+  },
+  "dependencies": {
+    "@nebulario/core-process": "^1.1.41-master",
+    "babel-runtime": "^6.26.0",
+    "bluebird": "^3.5.1",
+    "tree-kill": "^1.2.0"
+  },
+  "peerDependencies": {}
+}
