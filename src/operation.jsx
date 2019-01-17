@@ -1,11 +1,10 @@
 import _ from 'lodash'
 import {spawn, wait} from '@nebulario/core-process';
 import killTree from 'tree-kill';
-const uuidv4 = require('uuid/v4');
 
 export const exec = async (cmd, args, opts, evtHnd, cxt) => {
 
-  const {promise: runtimePromise, process: runtimeProcess} = await handler(cmd, args, opts, evtHnd, cxt);
+  const {promise: runtimePromise, process: runtimeProcess} = await spawn(cmd, args, opts, evtHnd, cxt);
 
   try {
     await runtimePromise;
@@ -31,7 +30,7 @@ export const start = async (operationid, handler, params, cxt) => {
     if (operation.status === "stop" || operation.status === "restart") {
 
       if (operation.process) {
-        killTree(operation.process.pid, 'SIGINT');
+        killTree(operation.process.pid, 'SIGTERM');
         operation.process = null;
       }
     }
@@ -57,25 +56,24 @@ export const start = async (operationid, handler, params, cxt) => {
     restart: false
   }
 
-  let k = 0;
-  while (k < 5) {
-    try {
+  //let k = 0;
+  //while (k < 2) {
+  try {
 
-      operation.status = "running";
-      await Promise.all([
-        control(operation, cxt),
-        executor(operation, cxt)
-      ]);
-
-    } catch (e) {
-      console.log("OPERATION_ERROR: " + e.toString());
-      k++;
-      operation.status = "stop";
-      if (operation.restart !== true) {
-        throw e;
-      }
+    operation.status = "active";
+    await Promise.all([
+      control(operation, cxt),
+      executor(operation, cxt)
+    ]);
+    //k++;
+  } catch (e) {
+    console.log("OPERATION_ERROR: " + e.toString());
+    operation.status = "stop";
+    if (operation.restart !== true) {
+      throw e;
     }
   }
+  //}
 
 }
 

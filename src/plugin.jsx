@@ -1,5 +1,7 @@
 import * as IO from './io';
 import * as Operation from './operation';
+import {wait} from '@nebulario/core-process';
+const uuidv4 = require('uuid/v4');
 
 const PLUGIN_DATA = {
   status: "init",
@@ -45,7 +47,7 @@ export const run = async (cmdHandlers) => {
   process.stdin.on('data', async function(rawData) {
     const data = rawData.toString();
 
-    const events = getEvents(data)
+    const events = IO.getEvents(data)
 
     for (const evt of events) {
 
