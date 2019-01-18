@@ -1,9 +1,5 @@
 import _ from 'lodash'
 const uuidv4 = require('uuid/v4');
-import fs from 'fs';
-
-export const saveJson = (folder, json) => fs.writeFileSync(folder, JSON.stringify(json, null, 2), 'utf8');
-export const loadJson = (folder) => JSON.parse(fs.readFileSync(folder, 'utf8'));
 
 export const getEvents = data => {
   const rawInput = data.split("\n");
@@ -12,11 +8,12 @@ export const getEvents = data => {
 }
 
 export const sendEvent = (event, payload, cxt = {}) => {
-  const {requestid} = cxt;
+  const {commandid, requestid} = cxt;
 
   const ev = {
     id: uuidv4(),
     requestid,
+    commandid,
     event,
     payload
   }

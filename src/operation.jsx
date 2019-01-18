@@ -1,6 +1,8 @@
 import _ from 'lodash'
 import {spawn, wait} from '@nebulario/core-process';
 import killTree from 'tree-kill';
+import * as IO from './io';
+const uuidv4 = require('uuid/v4');
 
 export const exec = async (cmd, args, opts, evtHnd, cxt) => {
 
@@ -9,86 +11,122 @@ export const exec = async (cmd, args, opts, evtHnd, cxt) => {
   try {
     await runtimePromise;
   } catch (e) {
-    console.log("EXEC_ERROR: " + e.toString());
-  } finally {
-    killTree(runtimeProcess.pid, 'SIGTERM');
-  }
+    console.log("EXECUTION_ERROR: " + e.toString());
+  } //finally {
+  //killTree(runtimeProcess.pid, 'SIGTERM');
+  //}
 
 }
 
 const OPERATION_DATA = {};
-export const get = id => OPERATION_DATA[id];
+export const get = id => OPERATION_DATA[id] || null;
 
-export const start = async (operationid, handler, params, cxt) => {
+export const waitFor = async (operation, status) => {
 
-  const control = async (operation, cxt) => {
-
-    while (operation.status === "active") {
-      await wait(100);
-    }
-
-    if (operation.status === "stop" || operation.status === "restart") {
-
-      if (operation.process) {
-        killTree(operation.process.pid, 'SIGTERM');
-        operation.process = null;
-      }
-    }
-
+  if (!operation) {
+    return;
   }
 
-  const executor = async (operation, cxt) => {
+  while (operation.status !== status) {
+    await wait(100);
+  }
+}
 
-    const {promise: runtimePromise, process: runtimeProcess} = handler(params, cxt);
-    operation.process = runtimeProcess;
+const control = async (operation, cxt) => {
+
+  while (operation.status !== "stopping") {
+    await wait(100);
+  }
+
+  console.log("KILL OPERATION PROCESS SIGINT");
+  if (operation.process) {
+    killTree(operation.process.pid, 'SIGINT');
+    operation.process = null;
+  }
+
+  while (operation.status === "stopping") {
+    await wait(100);
+  }
+
+}
+
+const executor = async (operation, handler, cxt) => {
+  const {promise: runtimePromise, process: runtimeProcess} = handler(operation.params, cxt);
+  operation.process = runtimeProcess;
+  await runtimePromise;
+}
+
+const loop = async function(operation, handler, cxt) {
+  const {operationid} = operation;
+
+  while (operation.restart === true) {
+
+    IO.sendEvent("plugin.operation.started", {
+      operationid
+    }, cxt);
 
     try {
-      await runtimePromise;
+      operation.status = "active";
+      operation.restart = false;
+      await Promise.all([
+        control(operation, cxt),
+        executor(operation, handler, cxt)
+      ]);
+      await wait(2500);
+    } catch (e) {
+
+      IO.sendEvent("plugin.operation.error", {
+        operationid,
+        error: e.message
+      }, cxt);
+
+      console.log("OPERATION_ERROR: " + e.toString());
+      if (operation.restart !== true) {
+        throw e;
+      }
     } finally {
+
+      IO.sendEvent("plugin.operation.stopped", {
+        operationid
+      }, cxt);
+
       operation.status = "stop";
     }
   }
+
+}
+
+export const start = (handler, params, cxt) => {
+  const operationid = uuidv4();
 
   const operation = {
     operationid,
     status: "stop",
     params,
-    restart: false
+    restart: true
   }
 
-  //let k = 0;
-  //while (k < 2) {
-  try {
+  OPERATION_DATA[operationid] = operation;
+  loop(operation, handler, cxt).catch(function(err) {
+    console.log("ERROR OPERATION: " + operationid);
+  }).then(function(control, execution) {
+    console.log("FINISH OPERATION: " + operationid);
+  })
 
-    operation.status = "active";
-    await Promise.all([
-      control(operation, cxt),
-      executor(operation, cxt)
-    ]);
-    //k++;
-  } catch (e) {
-    console.log("OPERATION_ERROR: " + e.toString());
-    operation.status = "stop";
-    if (operation.restart !== true) {
-      throw e;
-    }
-  }
-  //}
-
+  return operation;
 }
 
-export const restart = async (operationid, cxt) => {
-  const operation = get(operationid);
-
+export const restart = (operation, cxt) => {
   if (operation) {
+    stop(operationid, cxt);
     operation.restart = true;
-    await stop(operationid, cxt);
   }
 }
 
-export const stop = async (operationid, cxt) => {
-  const operation = get(operationid);
+export const stop = (operation, cxt) => {
   if (operation) {
-    operation.status = "stop";
+    operation.restart = false;
+    operation.status = "stopping";
+    delete OPERATION_DATA[operation.operationid];
   }
 }

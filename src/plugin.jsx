@@ -1,7 +1,7 @@
 import * as IO from './io';
+import fs from 'fs';
 import * as Operation from './operation';
-import {wait} from '@nebulario/core-process';
-const uuidv4 = require('uuid/v4');
+import {exec, wait} from '@nebulario/core-process';
 
 const PLUGIN_DATA = {
   status: "init",
@@ -20,7 +20,7 @@ function shutdown(signal) {
       console.error(err.stack || err);
     }
 
-    IO.sendEvent("plugin.terminated");
+    IO.sendEvent("plugin.terminated", {});
 
     PLUGIN_DATA.status = "finish";
 
@@ -34,6 +34,13 @@ function shutdown(signal) {
 
 }
 
+//await Process.exec(['mkdir -p ' + outputPath], {}, {}, cxt);
+//if (!fs.existsSync(outputPath)) {
+//  await exec(['mkdir -p ' + outputPath], {}, {}, cxt);
+//}
+
+// "cd /home/victor/nodeflow/workspace/namespaces/repoflow.com/instances/local-ui-graph-master/modules/dll-react;git status --porcelain --no-renames"
+
 process.on('SIGTERM', shutdown('SIGTERM')).on('SIGINT', shutdown('SIGINT')).on('uncaughtException', shutdown('uncaughtException'));
 
 export const run = async (cmdHandlers) => {
@@ -41,8 +48,19 @@ export const run = async (cmdHandlers) => {
   const payloadB64 = process.argv[2];
   const params = JSON.parse(Buffer.from(payloadB64, 'base64').toString('ascii'));
 
-  const {pluginid} = params;
+  const {pluginid, paths} = params;
+  const cxt = {
+    pluginid,
+    paths
+  };
   console.log("Starting plugin " + pluginid);
+  console.log(paths);
+
+  if (paths && paths.absolute) {
+    if (!fs.existsSync(paths.absolute)) {
+      await exec(['mkdir -p ' + paths.absolute], {}, {}, cxt);
+    }
+  }
 
   process.stdin.on('data', async function(rawData) {
     const data = rawData.toString();
@@ -55,8 +73,10 @@ export const run = async (cmdHandlers) => {
         const {requestid, commandid, params} = evt.payload;
 
         const cxt = {
+          commandid,
           requestid,
-          plugin: PLUGIN_DATA
+          plugin: PLUGIN_DATA,
+          paths
         };
 
         try {
@@ -66,38 +86,41 @@ export const run = async (cmdHandlers) => {
           }, cxt);
 
           IO.sendEvent("request.output", {
-            requestid,
-            output: out
+            output: out,
+            error: null
           }, cxt);
 
         } catch (e) {
-          IO.sendEvent("request.error", {
-            data: e.message
+          IO.sendEvent("request.output", {
+            output: null,
+            error: e.toString()
           }, cxt);
         }
       }
 
-      if (evt.event === "finish") {
+      if (evt.event === "plugin.finish") {
         PLUGIN_DATA.status = "stop"
       }
     }
 
   });
 
-  while (PLUGIN_DATA.status === "running") {
+  while (PLUGIN_DATA.status !== "stop") {
     await wait(100);
   }
+
+  const runOperationId = PLUGIN_DATA.run.operationid;
+  const buildOperationId = PLUGIN_DATA.build.operationid;
 
   const buildOperation = await Operation.get(buildOperationId);
   const runOperation = await Operation.get(runOperationId);
 
-  buildOperation && await Operation.stop(buildOperationId, cxt);
-  runOperation && await Operation.stop(buildOperationId, cxt);
+  await Operation.stop(buildOperationId, cxt);
+  await Operation.waitFor(buildOperation, "stop");
+  await Operation.stop(runOperation, cxt);
+  await Operation.waitFor(runOperation, "stop");
 
-  while ((buildOperation && buildOperation.status !== "stop") || (runOperation && runOperation.status !== "stop")) {
-    await wait(100);
-  }
-
+  console.log("END OF INSTANCE");
   IO.sendEvent("plugin.finished", {});
 
 }
@@ -108,14 +131,13 @@ const handleRequest = async ({
   build,
   publish
 }, {
-  requestid,
   commandid,
   params
 }, cxt) => {
   let out = null;
 
-  const runOperationId = PLUGIN_DATA.run.operationid;
-  const buildOperationId = PLUGIN_DATA.build.operationid;
+  const runOperation = Operation.get(PLUGIN_DATA.run.operationid);
+  const buildOperation = Operation.get(PLUGIN_DATA.build.operationid);
 
   //////////////////////////////////////////////////////////////////////////////
 
@@ -141,34 +163,46 @@ const handleRequest = async ({
 
   //////////////////////////////////////////////////////////////////////////////
 
-  if (buildOperationId === null && build.start && commandid === "build.start") {
-    PLUGIN_DATA.build.operationid = uuidv4();
-    out = await Operation.start(PLUGIN_DATA.build.operationid, build.start, params, cxt);
+  if (buildOperation === null && build.start && commandid === "build.start") {
+    const {operationid} = Operation.start(build.start, params, cxt);
+    PLUGIN_DATA.build.operationid = operationid;
+    out = {
+      operationid
+    };
   }
 
-  if (buildOperationId && commandid === "build.restart") {
-    out = await Operation.restart(buildOperationId, cxt);
+  if (buildOperation && commandid === "build.restart") {
+    Operation.restart(buildOperation, cxt);
+    out = {};
   }
 
-  if (buildOperationId && commandid === "build.stop") {
-    out = await Operation.stop(buildOperationId, cxt);
+  if (buildOperation && commandid === "build.stop") {
+    Operation.stop(buildOperation, cxt);
+    await Operation.waitFor(buildOperation, "stop");
     PLUGIN_DATA.build.operationid = null;
+    out = {};
   }
 
   //////////////////////////////////////////////////////////////////////////////
 
-  if (runOperationId === null && run.start && commandid === "run.start") {
-    PLUGIN_DATA.run.operationid = uuidv4();
-    out = await Operation.start(PLUGIN_DATA.run.operationid, run.start, params, cxt);
+  if (runOperation === null && run.start && commandid === "run.start") {
+    const {operationid} = Operation.start(run.start, params, cxt);
+    PLUGIN_DATA.run.operationid = operationid;
+    out = {
+      operationid
+    };
   }
 
-  if (runOperationId && commandid === "run.restart") {
-    out = await Operation.restart(runOperationId, cxt);
+  if (runOperation && commandid === "run.restart") {
+    Operation.restart(runOperation, cxt);
+    out = {};
   }
 
-  if (runOperationId && commandid === "run.stop") {
-    out = await Operation.stop(runOperationId, cxt);
+  if (runOperation && commandid === "run.stop") {
+    Operation.stop(runOperation, cxt);
+    await Operation.waitFor(runOperation, "stop");
     PLUGIN_DATA.run.operationid = null;
+    out = {};
   }
 
   //////////////////////////////////////////////////////////////////////////////
