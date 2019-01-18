@@ -43,6 +43,12 @@ function shutdown(signal) {
 
 process.on('SIGTERM', shutdown('SIGTERM')).on('SIGINT', shutdown('SIGINT')).on('uncaughtException', shutdown('uncaughtException'));
 
+const waitFor = async (status) => {
+  while (PLUGIN_DATA.status !== status) {
+    await wait(100);
+  }
+}
+
 export const run = async (cmdHandlers) => {
   PLUGIN_DATA.status = "running";
   const payloadB64 = process.argv[2];
@@ -97,17 +103,11 @@ export const run = async (cmdHandlers) => {
           }, cxt);
         }
       }
-
-      if (evt.event === "plugin.finish") {
-        PLUGIN_DATA.status = "stop"
-      }
     }
 
   });
 
-  while (PLUGIN_DATA.status !== "stop") {
-    await wait(100);
-  }
+  await waitFor("stopping");
 
   const runOperationId = PLUGIN_DATA.run.operationid;
   const buildOperationId = PLUGIN_DATA.build.operationid;
@@ -120,9 +120,7 @@ export const run = async (cmdHandlers) => {
   await Operation.stop(runOperation, cxt);
   await Operation.waitFor(runOperation, "stop");
 
-  console.log("END OF INSTANCE");
-  IO.sendEvent("plugin.finished", {});
-
+  PLUGIN_DATA.status = "stop";
 }
 
 const handleRequest = async ({
@@ -203,6 +201,11 @@ const handleRequest = async ({
     await Operation.waitFor(runOperation, "stop");
     PLUGIN_DATA.run.operationid = null;
     out = {};
+  }
+
+  if (commandid === "plugin.finish") {
+    PLUGIN_DATA.status = "stopping";
+    await waitFor("stop");
   }
 
   //////////////////////////////////////////////////////////////////////////////

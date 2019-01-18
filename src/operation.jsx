@@ -111,6 +111,7 @@ export const start = (handler, params, cxt) => {
     console.log("ERROR OPERATION: " + operationid);
   }).then(function(control, execution) {
     console.log("FINISH OPERATION: " + operationid);
+    delete OPERATION_DATA[operation.operationid];
   })
 
   return operation;
@@ -118,7 +119,7 @@ export const start = (handler, params, cxt) => {
 
 export const restart = (operation, cxt) => {
   if (operation) {
-    stop(operationid, cxt);
+    stop(operation, cxt);
     operation.restart = true;
   }
 }
@@ -127,6 +128,5 @@ export const stop = (operation, cxt) => {
   if (operation) {
     operation.restart = false;
     operation.status = "stopping";
-    delete OPERATION_DATA[operation.operationid];
   }
 }
