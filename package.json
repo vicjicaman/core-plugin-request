@@ -1,6 +1,6 @@
 {
   "name": "@nebulario/core-plugin-request",
-  "version": "1.0.1-build-server-services-dev",
+  "version": "1.0.2-build-server-services-dev",
   "description": "Request handler for plugins",
   "main": "./dist/index.js",
   "repository": "github.com:vicjicaman/core-plugin-request.git",
@@ -34,7 +34,7 @@
     "analyze": "webpack --config webpack.config.js --env.analyze"
   },
   "dependencies": {
-    "@nebulario/core-process": "^1.1.41-master",
+    "@nebulario/core-process": "1.1.41-master",
     "babel-runtime": "^6.26.0",
     "bluebird": "^3.5.1",
     "tree-kill": "^1.2.0"

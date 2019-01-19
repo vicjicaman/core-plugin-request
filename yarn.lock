@@ -2,7 +2,7 @@
 # yarn lockfile v1
 
 
-"@nebulario/core-process@^1.1.41-master":
+"@nebulario/core-process@1.1.41-master":
   version "1.1.41-master"
   resolved "https://registry.yarnpkg.com/@nebulario/core-process/-/core-process-1.1.41-master.tgz#46214bac47c62a8b8b0b1dc16eac8293e3e929ea"
   dependencies:
