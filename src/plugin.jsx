@@ -54,19 +54,11 @@ export const run = async (cmdHandlers) => {
   const payloadB64 = process.argv[2];
   const params = JSON.parse(Buffer.from(payloadB64, 'base64').toString('ascii'));
 
-  const {pluginid, paths} = params;
+  const {pluginid} = params;
   const cxt = {
-    pluginid,
-    paths
+    pluginid
   };
   console.log("Starting plugin " + pluginid);
-  console.log(paths);
-
-  if (paths && paths.absolute) {
-    if (!fs.existsSync(paths.absolute)) {
-      await exec(['mkdir -p ' + paths.absolute], {}, {}, cxt);
-    }
-  }
 
   process.stdin.on('data', async function(rawData) {
     const data = rawData.toString();
@@ -81,8 +73,7 @@ export const run = async (cmdHandlers) => {
         const cxt = {
           commandid,
           requestid,
-          plugin: PLUGIN_DATA,
-          paths
+          plugin: PLUGIN_DATA
         };
 
         try {
