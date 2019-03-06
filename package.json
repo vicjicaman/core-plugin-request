@@ -4,7 +4,7 @@
   "description": "Request handler for plugins",
   "main": "./dist/index.js",
   "repository": "github.com:vicjicaman/core-plugin-request.git",
-  "author": "Victor Jimenez <vic@nodeflow.io>",
+  "author": "Victor Jimenez <vic@repoflow.com>",
   "license": "Apache-2.0",
   "devDependencies": {
     "babel-cli": "^6.26.0",

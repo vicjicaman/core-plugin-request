@@ -146,6 +146,9 @@ const handleRequest = async ({
 
   //////////////////////////////////////////////////////////////////////////////
 
+  if (build.configure && commandid === "build.configure") {
+    out = await build.configure(params, cxt);
+  }
   if (build.init && commandid === "build.init") {
     out = await build.init(params, cxt);
   }
