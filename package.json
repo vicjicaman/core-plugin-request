@@ -1,6 +1,6 @@
 {
   "name": "@nebulario/core-plugin-request",
-  "version": "1.0.0-build-server-services-dev",
+  "version": "1.70.2-license-layout-ui-prod",
   "description": "Request handler for plugins",
   "main": "./dist/index.js",
   "repository": "github.com:vicjicaman/core-plugin-request.git",
