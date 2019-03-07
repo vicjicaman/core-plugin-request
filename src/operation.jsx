@@ -38,22 +38,30 @@ const control = async (operation, cxt) => {
     await wait(100);
   }
 
-  console.log("KILL OPERATION PROCESS SIGINT");
-  if (operation.process) {
-    killTree(operation.process.pid, 'SIGINT');
-    operation.process = null;
+  console.log("KILL OPERATION PROCESS SIGINT!");
+  const killingProcess = operation.process;
+  if (killingProcess) {
+    killTree(killingProcess.pid, 'SIGINT');
+  }
+  let i = 0;
+  while (operation.status === "stopping" && operation.process) {
+    i++;
+    console.log("Waiting interruption " + i + "--------------------" + killingProcess.pid);
+    await wait(500);
   }
 
-  while (operation.status === "stopping") {
-    await wait(100);
-  }
+  operation.process = null;
 
 }
 
 const executor = async (operation, handler, cxt) => {
   const {promise: runtimePromise, process: runtimeProcess} = handler(operation.params, cxt);
   operation.process = runtimeProcess;
+  console.log("Started execution promise<================================")
   await runtimePromise;
+  console.log("Finished execution promise<===============================")
+  operation.status = "stop";
+  operation.process = null;
 }
 
 const loop = async function(operation, handler, cxt) {
