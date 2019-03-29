@@ -55,7 +55,13 @@ const control = async (operation, cxt) => {
 }
 
 const executor = async (operation, handler, cxt) => {
-  const {promise: runtimePromise, process: runtimeProcess} = handler(operation.params, cxt);
+  const spawnInfo = handler(operation.params, cxt);
+  if (!spawnInfo) {
+    operation.status = "stop";
+    operation.process = null;
+    return;
+  }
+  const {promise: runtimePromise, process: runtimeProcess} = spawnInfo;
   operation.process = runtimeProcess;
   console.log("Started execution promise<================================")
   await runtimePromise;

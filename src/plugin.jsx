@@ -147,10 +147,16 @@ const handleRequest = async ({
   //////////////////////////////////////////////////////////////////////////////
 
   if (build.configure && commandid === "build.configure") {
-    out = await build.configure(params, cxt);
+    const cnfOp = build.configure(params, cxt);
+    out = cnfOp
+      ? await cnfOp
+      : null;
   }
   if (build.init && commandid === "build.init") {
-    out = await build.init(params, cxt);
+    const initOp = build.init(params, cxt);
+    out = initOp
+      ? await initOp
+      : null;
   }
 
   //////////////////////////////////////////////////////////////////////////////
