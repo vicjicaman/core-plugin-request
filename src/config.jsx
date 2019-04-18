@@ -6,7 +6,7 @@ export const replace = (content, config) => {
 
   for (const configVar in config) {
     const configVal = config[configVar];
-    replaced = replaced.replace(new RegExp("\\$\\{" + configVar + "\\}", 'g'), configVal);
+    replaced = replaced.replace(new RegExp("\\$\\{" + configVar + "\\}", 'g'), typeof configVal === 'object' ? configVal.value : configVal);
   }
 
   return replaced;

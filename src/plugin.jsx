@@ -1,7 +1,10 @@
 import * as IO from './io';
 import fs from 'fs';
 import * as Operation from './operation';
-import {exec, wait} from '@nebulario/core-process';
+import {
+  exec,
+  wait
+} from '@nebulario/core-process';
 
 const PLUGIN_DATA = {
   status: "init",
@@ -26,9 +29,9 @@ function shutdown(signal) {
 
     setTimeout(() => {
       process.exit(
-        err
-        ? 1
-        : 0);
+        err ?
+        1 :
+        0);
     }, 1000).unref();
   };
 
@@ -49,16 +52,15 @@ const waitFor = async (status) => {
   }
 }
 
-export const run = async (cmdHandlers) => {
+export const run = async (pluginid, cmdHandlers) => {
   PLUGIN_DATA.status = "running";
   const payloadB64 = process.argv[2];
   const params = JSON.parse(Buffer.from(payloadB64, 'base64').toString('ascii'));
-
-  const {pluginid} = params;
+  
   const cxt = {
     pluginid
   };
-  console.log("Starting plugin " + pluginid);
+  console.log("Starting plugin... " + pluginid);
 
   process.stdin.on('data', async function(rawData) {
     const data = rawData.toString();
@@ -67,8 +69,14 @@ export const run = async (cmdHandlers) => {
 
     for (const evt of events) {
 
+      console.log("Handle plugin event... " + evt.event);
+
       if (evt.event === "request") {
-        const {requestid, commandid, params} = evt.payload;
+        const {
+          requestid,
+          commandid,
+          params
+        } = evt.payload;
 
         const cxt = {
           commandid,
@@ -93,6 +101,10 @@ export const run = async (cmdHandlers) => {
             error: e.toString()
           }, cxt);
         }
+      } else
+      if (evt.event === "plugin.finish") {
+        PLUGIN_DATA.status = "stopping";
+        console.log("Finishing plugin...");
       }
     }
 
@@ -112,6 +124,7 @@ export const run = async (cmdHandlers) => {
   await Operation.waitFor(runOperation, "stop");
 
   PLUGIN_DATA.status = "stop";
+  console.log("Plugin finished!");
 }
 
 const handleRequest = async ({
@@ -148,21 +161,23 @@ const handleRequest = async ({
 
   if (build.configure && commandid === "build.configure") {
     const cnfOp = build.configure(params, cxt);
-    out = cnfOp
-      ? await cnfOp
-      : null;
+    out = cnfOp ?
+      await cnfOp :
+      null;
   }
   if (build.init && commandid === "build.init") {
     const initOp = build.init(params, cxt);
-    out = initOp
-      ? await initOp
-      : null;
+    out = initOp ?
+      await initOp :
+      null;
   }
 
   //////////////////////////////////////////////////////////////////////////////
 
   if (buildOperation === null && build.start && commandid === "build.start") {
-    const {operationid} = Operation.start(build.start, params, cxt);
+    const {
+      operationid
+    } = Operation.start(build.start, params, cxt);
     PLUGIN_DATA.build.operationid = operationid;
     out = {
       operationid
@@ -184,7 +199,9 @@ const handleRequest = async ({
   //////////////////////////////////////////////////////////////////////////////
 
   if (runOperation === null && run.start && commandid === "run.start") {
-    const {operationid} = Operation.start(run.start, params, cxt);
+    const {
+      operationid
+    } = Operation.start(run.start, params, cxt);
     PLUGIN_DATA.run.operationid = operationid;
     out = {
       operationid
@@ -201,11 +218,6 @@ const handleRequest = async ({
     await Operation.waitFor(runOperation, "stop");
     PLUGIN_DATA.run.operationid = null;
     out = {};
-  }
-
-  if (commandid === "plugin.finish") {
-    PLUGIN_DATA.status = "stopping";
-    await waitFor("stop");
   }
 
   //////////////////////////////////////////////////////////////////////////////

@@ -37,7 +37,8 @@
     "@nebulario/core-process": "1.70.0-master",
     "babel-runtime": "^6.26.0",
     "bluebird": "^3.5.1",
-    "tree-kill": "^1.2.0"
+    "tree-kill": "^1.2.0",
+    "yamljs": "^0.3.0"
   },
   "peerDependencies": {}
 }
