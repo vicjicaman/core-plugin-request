@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import * as JSON from './json.jsx'
 
 export const replace = (content, config) => {
   let replaced = content;
@@ -38,4 +39,60 @@ export const get = (folder, file, config) => {
   }
 
   return out;
+}
+
+
+export const load = (folder, file = "config.json") => {
+
+  const config = JSON.load(path.join(folder, file));
+
+  const dependenciesConfigValues = {};
+
+  for (const moduleid in config.dependencies) {
+    const {
+      version
+    } = config.dependencies[moduleid];
+
+
+    if (version.startsWith("file:")) {
+      const localFolder = path.join(folder, version.replace("file:", ""));
+      const depConfig = JSON.load(path.join(localFolder, "dist", "config.json"));
+
+      for (const entry in depConfig) {
+        dependenciesConfigValues[entry + '@' + moduleid] = depConfig[entry].value;
+      }
+
+    } else {
+      // get the content from the namespace
+
+    }
+    //
+
+  }
+
+  return dependenciesConfigValues;
+}
+
+
+
+export const dependencies = (folder, file = "config.json") => {
+  const config = JSON.load(path.join(folder, file));
+
+  const dependencies = [];
+
+  for (const moduleid in config.dependencies) {
+    const {
+      version
+    } = config.dependencies[moduleid];
+    dependencies.push({
+      dependencyid: 'dependency|config.json|dependencies.' + moduleid + '.version',
+      kind: "config",
+      filename: "config.json",
+      path: 'dependencies.' + moduleid + '.version',
+      fullname: moduleid,
+      version
+    });
+  }
+
+  return dependencies;
 }
