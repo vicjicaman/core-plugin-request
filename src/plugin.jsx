@@ -1,19 +1,13 @@
 import * as IO from './io';
 import fs from 'fs';
-import * as Operation from './operation';
+import * as Task from './task';
 import {
   exec,
   wait
 } from '@nebulario/core-process';
 
 const PLUGIN_DATA = {
-  status: "init",
-  run: {
-    operationid: null
-  },
-  build: {
-    operationid: null
-  }
+  status: "init"
 };
 
 function shutdown(signal) {
@@ -34,7 +28,6 @@ function shutdown(signal) {
         0);
     }, 1000).unref();
   };
-
 }
 
 //await Process.exec(['mkdir -p ' + outputPath], {}, {}, cxt);
@@ -53,93 +46,87 @@ const waitFor = async (status) => {
 }
 
 export const run = async (pluginid, cmdHandlers) => {
-  PLUGIN_DATA.status = "running";
-  const payloadB64 = process.argv[2];
-  const params = JSON.parse(Buffer.from(payloadB64, 'base64').toString('ascii'));
-  
-  const cxt = {
-    pluginid
-  };
-  console.log("Starting plugin... " + pluginid);
+  try {
+    PLUGIN_DATA.status = "running";
+    const payloadB64 = process.argv[2];
+    const params = JSON.parse(Buffer.from(payloadB64, 'base64').toString('ascii'));
 
-  process.stdin.on('data', async function(rawData) {
-    const data = rawData.toString();
+    const cxt = {
+      pluginid
+    };
+    console.log("Starting plugin... " + pluginid);
 
-    const events = IO.getEvents(data)
+    Task.register("build", cmdHandlers.build, cxt);
+    Task.register("run", cmdHandlers.run, cxt);
 
-    for (const evt of events) {
+    process.stdin.on('data', async function(rawData) {
+      const data = rawData.toString();
 
-      console.log("Handle plugin event... " + evt.event);
+      const events = IO.getEvents(data)
 
-      if (evt.event === "request") {
-        const {
-          requestid,
-          commandid,
-          params
-        } = evt.payload;
+      for (const evt of events) {
 
-        const cxt = {
-          commandid,
-          requestid,
-          plugin: PLUGIN_DATA
-        };
+        console.log("Handle plugin event... " + evt.event);
 
-        try {
-          const out = await handleRequest(cmdHandlers, {
+        if (evt.event === "request") {
+          const {
+            requestid,
             commandid,
             params
-          }, cxt);
+          } = evt.payload;
 
-          IO.sendEvent("request.output", {
-            output: out,
-            error: null
-          }, cxt);
+          const cxt = {
+            commandid,
+            requestid,
+            plugin: PLUGIN_DATA
+          };
 
-        } catch (e) {
-          IO.sendEvent("request.output", {
-            output: null,
-            error: e.toString()
-          }, cxt);
+          try {
+            const out = await handleRequest(cmdHandlers, {
+              commandid,
+              params
+            }, cxt);
+
+            IO.sendEvent("request.output", {
+              output: out,
+              error: null
+            }, cxt);
+
+          } catch (e) {
+            IO.sendEvent("request.output", {
+              output: null,
+              error: e.toString()
+            }, cxt);
+          }
+        } else
+        if (evt.event === "plugin.finish") {
+          PLUGIN_DATA.status = "stopping";
+          console.log("Finishing plugin...");
         }
-      } else
-      if (evt.event === "plugin.finish") {
-        PLUGIN_DATA.status = "stopping";
-        console.log("Finishing plugin...");
       }
-    }
 
-  });
+    });
 
-  await waitFor("stopping");
+    await waitFor("stopping");
 
-  const runOperationId = PLUGIN_DATA.run.operationid;
-  const buildOperationId = PLUGIN_DATA.build.operationid;
+    // Stop all the performers!!!!
 
-  const buildOperation = await Operation.get(buildOperationId);
-  const runOperation = await Operation.get(runOperationId);
-
-  await Operation.stop(buildOperationId, cxt);
-  await Operation.waitFor(buildOperation, "stop");
-  await Operation.stop(runOperation, cxt);
-  await Operation.waitFor(runOperation, "stop");
-
-  PLUGIN_DATA.status = "stop";
-  console.log("Plugin finished!");
+    PLUGIN_DATA.status = "stop";
+    console.log("Plugin finished!");
+  } catch (e) {
+    console.log("PLUGIN_INIT_ERROR:" + e.toString());
+    throw e;
+  }
 }
 
 const handleRequest = async ({
   dependencies,
-  run,
-  build,
   publish
 }, {
   commandid,
   params
 }, cxt) => {
   let out = null;
-
-  const runOperation = Operation.get(PLUGIN_DATA.run.operationid);
-  const buildOperation = Operation.get(PLUGIN_DATA.build.operationid);
 
   //////////////////////////////////////////////////////////////////////////////
 
@@ -157,69 +144,9 @@ const handleRequest = async ({
     out = await dependencies.sync(params, cxt);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-
-  if (build.configure && commandid === "build.configure") {
-    const cnfOp = build.configure(params, cxt);
-    out = cnfOp ?
-      await cnfOp :
-      null;
+  if (commandid.startsWith("task.")) {
+    out = await Task.perform(commandid.replace("task.", ""), params, cxt);
   }
-  if (build.init && commandid === "build.init") {
-    const initOp = build.init(params, cxt);
-    out = initOp ?
-      await initOp :
-      null;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-
-  if (buildOperation === null && build.start && commandid === "build.start") {
-    const {
-      operationid
-    } = Operation.start(build.start, params, cxt);
-    PLUGIN_DATA.build.operationid = operationid;
-    out = {
-      operationid
-    };
-  }
-
-  if (buildOperation && commandid === "build.restart") {
-    Operation.restart(buildOperation, cxt);
-    out = {};
-  }
-
-  if (buildOperation && commandid === "build.stop") {
-    Operation.stop(buildOperation, cxt);
-    await Operation.waitFor(buildOperation, "stop");
-    PLUGIN_DATA.build.operationid = null;
-    out = {};
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-
-  if (runOperation === null && run.start && commandid === "run.start") {
-    const {
-      operationid
-    } = Operation.start(run.start, params, cxt);
-    PLUGIN_DATA.run.operationid = operationid;
-    out = {
-      operationid
-    };
-  }
-
-  if (runOperation && commandid === "run.restart") {
-    Operation.restart(runOperation, cxt);
-    out = {};
-  }
-
-  if (runOperation && commandid === "run.stop") {
-    Operation.stop(runOperation, cxt);
-    await Operation.waitFor(runOperation, "stop");
-    PLUGIN_DATA.run.operationid = null;
-    out = {};
-  }
-
   //////////////////////////////////////////////////////////////////////////////
 
   return out;

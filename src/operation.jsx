@@ -1,22 +1,11 @@
 import _ from 'lodash'
-import {spawn, wait} from '@nebulario/core-process';
+import {
+  spawn,
+  wait
+} from '@nebulario/core-process';
 import killTree from 'tree-kill';
 import * as IO from './io';
 const uuidv4 = require('uuid/v4');
-
-export const exec = async (cmd, args, opts, evtHnd, cxt) => {
-
-  const {promise: runtimePromise, process: runtimeProcess} = await spawn(cmd, args, opts, evtHnd, cxt);
-
-  try {
-    await runtimePromise;
-  } catch (e) {
-    console.log("EXECUTION_ERROR: " + e.toString());
-  } //finally {
-  //killTree(runtimeProcess.pid, 'SIGTERM');
-  //}
-
-}
 
 const OPERATION_DATA = {};
 export const get = id => OPERATION_DATA[id] || null;
@@ -38,15 +27,17 @@ const control = async (operation, cxt) => {
     await wait(100);
   }
 
-  console.log("KILL OPERATION PROCESS SIGINT!");
-  const killingProcess = operation.process;
-  if (killingProcess) {
-    killTree(killingProcess.pid, 'SIGINT');
+  if (operation.process !== null) {
+    console.log("KILL OPERATION PROCESS SIGINT!");
+    const killingProcess = operation.process;
+    if (killingProcess) {
+      killTree(killingProcess.pid, 'SIGINT');
+    }
   }
   let i = 0;
-  while (operation.status === "stopping" && operation.process) {
+  while (operation.status === "stopping") {
     i++;
-    console.log("Waiting interruption " + i + "--------------------" + killingProcess.pid);
+    console.log("Waiting stopping for " + operation.operationid + "--------------------" + i);
     await wait(500);
   }
 
@@ -61,23 +52,30 @@ const executor = async (operation, handler, cxt) => {
     operation.process = null;
     return;
   }
-  const {promise: runtimePromise, process: runtimeProcess} = spawnInfo;
+  const {
+    promise: runtimePromise,
+    process: runtimeProcess
+  } = spawnInfo;
+
   operation.process = runtimeProcess;
   console.log("Started execution promise<================================")
-  await runtimePromise;
+  if (runtimeProcess) {
+    await runtimePromise;
+  } else {
+    await runtimePromise(operation, cxt);
+  }
+
   console.log("Finished execution promise<===============================")
   operation.status = "stop";
   operation.process = null;
 }
 
 const loop = async function(operation, handler, cxt) {
-  const {operationid} = operation;
+  const {
+    operationid
+  } = operation;
 
   while (operation.restart === true) {
-
-    IO.sendEvent("plugin.operation.started", {
-      operationid
-    }, cxt);
 
     try {
       operation.status = "active";
@@ -86,10 +84,9 @@ const loop = async function(operation, handler, cxt) {
         control(operation, cxt),
         executor(operation, handler, cxt)
       ]);
-      await wait(2500);
     } catch (e) {
 
-      IO.sendEvent("plugin.operation.error", {
+      IO.sendEvent("error", {
         operationid,
         error: e.message
       }, cxt);
@@ -99,11 +96,6 @@ const loop = async function(operation, handler, cxt) {
         throw e;
       }
     } finally {
-
-      IO.sendEvent("plugin.operation.stopped", {
-        operationid
-      }, cxt);
-
       operation.status = "stop";
     }
   }
