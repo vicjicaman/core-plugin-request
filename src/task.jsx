@@ -5,13 +5,20 @@ import * as Operation from './operation';
 
 const TASK_DATA = {};
 
-export const register = (taskid, {
-  configure,
-  transform,
-  init,
-  start,
-  clear
-}, cxt) => {
+export const register = (taskid, handlers, cxt) => {
+
+  if (!handlers) {
+    TASK_DATA[taskid] = null;
+    return;
+  }
+
+  const {
+    configure,
+    transform,
+    init,
+    start,
+    clear
+  } = handlers;
 
   const task = {
     taskid,
@@ -56,6 +63,11 @@ export const register = (taskid, {
 export const perform = async (commandid, params, cxt) => {
   const [taskid, phase] = commandid.split(".");
   const task = TASK_DATA[taskid];
+
+  if (task === null) {
+    return null;
+  }
+
   const {
     phases
   } = task;

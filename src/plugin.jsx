@@ -30,13 +30,6 @@ function shutdown(signal) {
   };
 }
 
-//await Process.exec(['mkdir -p ' + outputPath], {}, {}, cxt);
-//if (!fs.existsSync(outputPath)) {
-//  await exec(['mkdir -p ' + outputPath], {}, {}, cxt);
-//}
-
-// "cd /home/victor/nodeflow/workspace/namespaces/repoflow.com/instances/local-ui-graph-master/modules/dll-react;git status --porcelain --no-renames"
-
 process.on('SIGTERM', shutdown('SIGTERM')).on('SIGINT', shutdown('SIGINT')).on('uncaughtException', shutdown('uncaughtException'));
 
 const waitFor = async (status) => {
