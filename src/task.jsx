@@ -29,10 +29,23 @@ export const register = (taskid, handlers, cxt) => {
       init,
       start: async (params, cxt) => {
 
+        const config =  {
+          onError: (operation, e, cxt) => {
+            if(e.code === null){
+              IO.sendEvent("warning", {
+                operationid,
+                data: "code: " + e.code +" - "+e.message 
+              }, cxt);
+              return true;
+            }
+
+            return false;
+          }
+        };
+
         const {
           operationid
-        } = Operation.start(start, params, cxt);
-
+        } = Operation.start(start, params, config, cxt);
 
         return {
           operationid

@@ -2,6 +2,7 @@ import fs from 'fs'
 import md5 from 'md5'
 
 export const watch  = (filenameToWatch, cb) => {
+  console.log("test");
 
   let md5Previous = null;
   let fsWait = false;
