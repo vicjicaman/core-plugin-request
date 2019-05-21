@@ -32,9 +32,10 @@ export const register = (taskid, handlers, cxt) => {
         const config =  {
           onError: (operation, e, cxt) => {
             if(e.code === null){
+
               IO.sendEvent("warning", {
                 operationid,
-                data: "code: " + e.code +" - "+e.message 
+                data: "code: " + e.code +" - "+e.message
               }, cxt);
               return true;
             }

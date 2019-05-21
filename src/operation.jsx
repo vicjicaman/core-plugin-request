@@ -27,9 +27,13 @@ const control = async (operation, cxt) => {
     operationid
   } = operation;
 
+  console.log("Operation in control: " + operation.status);
+
   while (operation.status !== "stopping") {
     await wait(100);
   }
+
+  console.log("Stop operation control: " + operation.status);
 
   if (operation.process !== null) {
     console.log(operationid + ":KILL OPERATION PROCESS SIGINT");
@@ -165,6 +169,7 @@ export const restart = (operation, cxt) => {
 
 export const stop = (operation, cxt) => {
   if (operation) {
+    console.log("Stopping operation call");
     operation.restart = false;
     operation.status = "stopping";
   }
