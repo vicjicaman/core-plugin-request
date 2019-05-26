@@ -13,7 +13,7 @@ export const register = (taskid, handlers, cxt) => {
   }
 
   const {
-    configure,
+    listen,
     transform,
     init,
     start,
@@ -23,19 +23,43 @@ export const register = (taskid, handlers, cxt) => {
   const task = {
     taskid,
     phases: {
-      configure,
+      listen: async (params, cxt) => {
+
+        const {
+          listening: {
+            operationid
+          }
+        } = params;
+
+        const op = Operation.get(operationid);
+
+        try {
+
+          await listen({
+            ...params,
+            operation: op
+          }, cxt);
+
+        } catch (err) {
+          IO.sendEvent("warning", {
+            operationid,
+            data: "LISTEN_ERROR: "
+          }, cxt);
+        }
+
+      },
       transform,
       clear,
       init,
       start: async (params, cxt) => {
 
-        const config =  {
+        const config = {
           onError: (operation, e, cxt) => {
-            if(e.code === null){
+            if (e.code === null) {
 
               IO.sendEvent("warning", {
                 operationid,
-                data: "code: " + e.code +" - "+e.message
+                data: "code: " + e.code + " - " + e.message
               }, cxt);
               return true;
             }

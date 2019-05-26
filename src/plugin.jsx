@@ -96,6 +96,16 @@ export const run = async (pluginid, cmdHandlers) => {
         if (evt.event === "plugin.finish") {
           PLUGIN_DATA.status = "stopping";
           console.log("Finishing plugin...");
+        } else
+        if (evt.event === "listen") {
+
+          const {
+            listening: {
+              taskid
+            }
+          } = evt.payload;
+
+          Task.perform(taskid + ".listen", evt.payload, cxt);
         }
       }
 
