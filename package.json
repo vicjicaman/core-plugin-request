@@ -1,6 +1,6 @@
 {
   "name": "@nebulario/core-plugin-request",
-  "version": "1.70.1-master",
+  "version": "1.70.2-master",
   "description": "Request handler for plugins",
   "main": "./dist/index.js",
   "repository": "github.com:vicjicaman/core-plugin-request.git",
@@ -37,7 +37,9 @@
     "@nebulario/core-process": "1.70.0-master",
     "babel-runtime": "^6.26.0",
     "bluebird": "^3.5.1",
-    "tree-kill": "^1.2.0"
+    "md5": "^2.2.1",
+    "tree-kill": "^1.2.0",
+    "yamljs": "^0.3.0"
   },
   "peerDependencies": {}
 }

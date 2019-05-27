@@ -3,6 +3,10 @@ const uuidv4 = require('uuid/v4');
 
 export const getEvents = data => {
   const rawInput = data.split("\n");
+
+  //console.log("RAW EVENTS INPUT");
+  //console.log(rawInput);
+
   const rawEvents = _.filter(rawInput, l => l.startsWith("MIO{"));
   return _.map(rawEvents, re => JSON.parse(re.substr(3)))
 }
