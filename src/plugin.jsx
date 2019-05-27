@@ -42,7 +42,13 @@ export const run = async (pluginid, cmdHandlers) => {
   try {
     PLUGIN_DATA.status = "running";
     const payloadB64 = process.argv[2];
-    const params = JSON.parse(Buffer.from(payloadB64, 'base64').toString('ascii'));
+
+    const decoded = Buffer.from(payloadB64, 'base64').toString('ascii');
+
+    //console.log("PLUGIN INIT");
+    //console.log(decoded);
+
+    const params = JSON.parse(decoded);
 
     const cxt = {
       pluginid
