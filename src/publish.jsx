@@ -28,70 +28,85 @@ export const publish = async (urlSrv, params, cxt) => {
     }
   } = params;
 
-  const response = await axios.post(urlSrv + '/' + type, {
-    moduleid,
-    type,
-    mode,
-    version,
-    fullname,
-    url,
-    branchid,
-    folder: relativeFolder
-  }, {
-    responseType: 'stream',
-    timeout: 60 * 4 * 1000
-  });
 
-  let publishOutput = null;
-  let publishStreamFinished = false;
-  let publishStreamError = null;
+  try {
 
-  response.data.on('error', (data) => {
-    console.log("STREAM_PUBLISH_ERROR");
-    publishStreamError = data.toString();
-    IO.sendEvent("error", {
-      data: data.toString()
-    }, cxt);
-  });
+    const response = await axios.post(urlSrv + '/' + type, {
+      moduleid,
+      type,
+      mode,
+      version,
+      fullname,
+      url,
+      branchid,
+      folder: relativeFolder
+    }, {
+      responseType: 'stream',
+      timeout: 60 * 4 * 1000
+    });
 
-  response.data.on('data', (raw) => {
-    console.log("STREAM_PUBLISH_OUTPUT");
-    const rawString = raw.toString();
+    let publishOutput = null;
+    let publishStreamFinished = false;
+    let publishStreamError = null;
 
-    try {
-      publishOutput = JSON.parse(raw.toString())
-    } catch (e) {
-      console.log("STREAM_PUBLISH_PARSE:" + rawString);
+    response.data.on('error', (data) => {
+      console.log("STREAM_PUBLISH_ERROR");
+      publishStreamError = data.toString();
+      IO.sendEvent("error", {
+        data: data.toString(),
+        error: publishStreamError
+      }, cxt);
+    });
+
+    response.data.on('data', (raw) => {
+      console.log("STREAM_PUBLISH_OUTPUT");
+      const rawString = raw.toString();
+
+      try {
+        publishOutput = JSON.parse(raw.toString())
+      } catch (e) {
+        console.log("STREAM_PUBLISH_PARSE:" + rawString);
+      }
+
+      if (publishOutput.error) {
+        publishStreamError = publishOutput.error;
+        IO.sendEvent("error", {
+          data: publishStreamError,
+          error: publishStreamError
+        }, cxt);
+      } else {
+        IO.sendEvent("out", {
+          data: rawString
+        }, cxt);
+      }
+
+
+
+    });
+
+    response.data.on('end', function() {
+      publishStreamFinished = true;
+      IO.sendEvent("done", {}, cxt);
+    });
+
+    while (publishStreamFinished === false && publishStreamError === null) {
+      console.log("Waiting publish server response...");
+      await wait(1000);
     }
 
-    if (publishOutput.error) {
-      publishStreamError = data.error;
+    if (!publishOutput) {
+      throw new Error("INVALID_PUBLISH_OUTPUT");
     }
 
-    IO.sendEvent("out", {
-      data: rawString
-    }, cxt);
+    if (publishStreamError !== null) {
+      throw new Error(publishStreamError);
+    }
 
-  });
-
-  response.data.on('end', function() {
-    publishStreamFinished = true;
-    IO.sendEvent("done", {}, cxt);
-  });
-
-  while (publishStreamFinished === false && publishStreamError === null) {
-    await wait(100);
-  }
-
-  if (publishOutput !== null) {
-    return {
-      ...publishOutput,
-      error: publishStreamError
-    };
-  } else {
-    return {
-      error: "INVALID_PUBLISH_OUTPUT"
-    };
+    return publishOutput.output;
+  } catch (e) {
+    const error = "PUBLISH_ERROR:" + e.toString();
+    console.log(error)
+    throw e;
   }
 
 }
