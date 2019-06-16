@@ -7,12 +7,30 @@ export const getEvents = data => {
   //console.log("RAW EVENTS INPUT");
   //console.log(rawInput);
 
-  const rawEvents = _.filter(rawInput, l => l.startsWith("MIO{"));
-  return _.map(rawEvents, re => JSON.parse(re.substr(3)))
+  const rawEvents = _.filter(rawInput, l => l.startsWith("EIO{") && l.endsWith("}EIO"));
+
+  const events = _.map(rawEvents, re => JSON.parse(re.substr(3, re.length - 6)))
+
+  //return events;
+
+  console.log(data);
+  console.log(events)
+console.log(rawInput)
+
+  const last = rawInput[rawInput.length - 1];
+
+
+  return {
+    events,
+    pending: last.endsWith("}EIO") ? "" : last
+  }
 }
 
 export const sendEvent = (event, payload, cxt = {}) => {
-  const {commandid, requestid} = cxt;
+  const {
+    commandid,
+    requestid
+  } = cxt;
 
   const ev = {
     id: uuidv4(),
@@ -22,5 +40,5 @@ export const sendEvent = (event, payload, cxt = {}) => {
     payload
   }
 
-  console.log("SIO" + JSON.stringify(ev));
+  console.log("EIO" + JSON.stringify(ev) + "EIO");
 }

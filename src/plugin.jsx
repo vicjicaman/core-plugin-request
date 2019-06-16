@@ -38,6 +38,7 @@ const waitFor = async (status) => {
   }
 }
 
+let inputBuffer = "";
 export const run = async (pluginid, cmdHandlers) => {
   try {
     PLUGIN_DATA.status = "running";
@@ -59,9 +60,15 @@ export const run = async (pluginid, cmdHandlers) => {
     Task.register("run", cmdHandlers.run, cxt);
 
     process.stdin.on('data', async function(rawData) {
-      const data = rawData.toString();
+      inputBuffer = rawData.toString();
 
-      const events = IO.getEvents(data)
+      const {
+        events,
+        pending
+      } = IO.getEvents(inputBuffer);
+
+      inputBuffer = pending;
+      //console.log(inputBuffer)
 
       for (const evt of events) {
 
