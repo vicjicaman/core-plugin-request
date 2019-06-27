@@ -24,7 +24,8 @@ export const publish = async (urlSrv, params, cxt) => {
             folder: relativeFolder
           }
         }
-      }
+      },
+      labels
     }
   } = params;
 
@@ -39,7 +40,8 @@ export const publish = async (urlSrv, params, cxt) => {
       fullname,
       url,
       branchid,
-      folder: relativeFolder
+      folder: relativeFolder,
+      labels
     }, {
       responseType: 'stream',
       timeout: 60 * 4 * 1000
