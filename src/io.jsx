@@ -12,10 +12,9 @@ export const getEvents = data => {
   const events = _.map(rawEvents, re => JSON.parse(re.substr(3, re.length - 6)))
 
   //return events;
-
-  console.log(data);
-  console.log(events)
-console.log(rawInput)
+  //console.log(data);
+  //console.log(events)
+  //console.log(rawInput)
 
   const last = rawInput[rawInput.length - 1];
 
@@ -41,4 +40,15 @@ export const sendEvent = (event, payload, cxt = {}) => {
   }
 
   console.log("EIO" + JSON.stringify(ev) + "EIO");
+}
+
+
+export const sendOutput = (out, cxt) => {
+  out.stdout && sendEvent("out", {
+    data: out.stdout
+  }, cxt);
+
+  out.stderr && sendEvent("warning", {
+    data: out.stderr
+  }, cxt);
 }

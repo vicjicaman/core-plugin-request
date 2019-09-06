@@ -43,7 +43,7 @@ export const register = (taskid, handlers, cxt) => {
         } catch (err) {
           IO.sendEvent("warning", {
             operationid,
-            data: "LISTEN_ERROR: "
+            data: "LISTEN_ERROR: "+err.toString()
           }, cxt);
         }
 
