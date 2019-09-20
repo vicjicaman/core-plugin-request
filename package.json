@@ -1,6 +1,6 @@
 {
   "name": "@nebulario/core-plugin-request",
-  "version": "1.70.0-runtime-reference-prod",
+  "version": "1.70.3-runtime-reference-prod",
   "description": "Request handler for plugins",
   "main": "./dist/index.js",
   "repository": "github.com:vicjicaman/core-plugin-request.git",
