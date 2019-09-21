@@ -81,15 +81,17 @@ export const register = (taskid, handlers, cxt) => {
         operationid
       }, cxt) => {
         const op = Operation.get(operationid);
-        Operation.restart(op, cxt);
-        await Operation.waitFor(op, "running");
+        if(op.status==="active"){
+          Operation.restart(op, cxt);
+          await Operation.waitFor(op, "active", true, "RESTART");
+        }
       },
       stop: async ({
         operationid
       }, cxt) => {
         const op = Operation.get(operationid);
         Operation.stop(op, cxt);
-        await Operation.waitFor(op, "stop");
+        await Operation.waitFor(op, "stop", true, "STOP");
       }
     }
   };

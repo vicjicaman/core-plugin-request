@@ -31,7 +31,7 @@ export const multiple = (paths, cb) => {
 
 export const stop = watchers => {
   if (Array.isArray(watchers)) {
-    Array.isArray(watchers).forEach(wt => wt.close());
+    watchers.forEach(wt => wt.close());
   } else {
     watchers.close();
   }

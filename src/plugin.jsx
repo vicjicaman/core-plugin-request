@@ -73,7 +73,7 @@ export const run = async (pluginid, cmdHandlers) => {
       for (const evt of events) {
 
         console.log("Handle plugin event... " + evt.event);
-        console.log(JSON.stringify(evt.payload, null, 2));
+        //console.log(JSON.stringify(evt.payload, null, 2));
 
         if (evt.event === "request") {
           const {

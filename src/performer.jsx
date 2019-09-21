@@ -1,6 +1,11 @@
 import _ from "lodash";
 import * as IO from "./io";
 
+export const find = (performerid, performers) =>
+  _.find(performers, {
+    performerid
+  });
+
 export const link = (performer, performers, { onLinked }) => {
   const { dependents } = performer;
 
