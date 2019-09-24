@@ -1,66 +1,61 @@
-import * as IO from './io';
-import fs from 'fs';
-import * as Operation from './operation';
-
+import * as IO from "./io";
+import fs from "fs";
+import * as Operation from "./operation";
 
 const TASK_DATA = {};
 
 export const register = (taskid, handlers, cxt) => {
-
   if (!handlers) {
     TASK_DATA[taskid] = null;
     return;
   }
 
-  const {
-    listen,
-    transform,
-    init,
-    start,
-    clear
-  } = handlers;
+  const { listen, transform, init, start, clear } = handlers;
 
   const task = {
     taskid,
     phases: {
       listen: async (params, cxt) => {
-
         const {
-          listening: {
-            operationid
-          }
+          listening: { operationid }
         } = params;
 
         const op = Operation.get(operationid);
 
         try {
-
-          await listen({
-            ...params,
-            operation: op
-          }, cxt);
-
+          await listen(
+            {
+              ...params,
+              operation: op
+            },
+            { ...cxt, params: op.params }
+          );
         } catch (err) {
-          IO.sendEvent("warning", {
-            operationid,
-            data: "LISTEN_ERROR: "+err.toString()
-          }, cxt);
+          IO.sendEvent(
+            "warning",
+            {
+              operationid,
+              data: "LISTEN_ERROR: " + err.toString()
+            },
+            cxt
+          );
         }
-
       },
       transform,
       clear,
       init,
       start: async (params, cxt) => {
-
         const config = {
           onError: (operation, e, cxt) => {
             if (e.code === null) {
-
-              IO.sendEvent("warning", {
-                operationid,
-                data: "code: " + e.code + " - " + e.message
-              }, cxt);
+              IO.sendEvent(
+                "warning",
+                {
+                  operationid,
+                  data: "code: " + e.code + " - " + e.message
+                },
+                cxt
+              );
               return true;
             }
 
@@ -68,37 +63,31 @@ export const register = (taskid, handlers, cxt) => {
           }
         };
 
-        const {
-          operationid
-        } = Operation.start(start, params, config, cxt);
+        const { operationid } = Operation.start(start, params, config, cxt);
 
         return {
           operationid
         };
-
       },
-      restart: async ({
-        operationid
-      }, cxt) => {
+      restart: async ({ operationid }, cxt) => {
         const op = Operation.get(operationid);
-        if(op.status==="active"){
-          Operation.restart(op, cxt);
+        if (op.status === "active") {
+          Operation.restart(op, { ...cxt, params: op.params });
           await Operation.waitFor(op, "active", true, "RESTART");
         }
       },
-      stop: async ({
-        operationid
-      }, cxt) => {
+      stop: async ({ operationid }, cxt) => {
         const op = Operation.get(operationid);
-        Operation.stop(op, cxt);
-        await Operation.waitFor(op, "stop", true, "STOP");
+        if (op) {
+          Operation.stop(op, { ...cxt, params: op.params });
+          await Operation.waitFor(op, "stop", true, "STOP");
+        }
       }
     }
   };
 
   TASK_DATA[taskid] = task;
-}
-
+};
 
 export const perform = async (commandid, params, cxt) => {
   const [taskid, phase] = commandid.split(".");
@@ -108,9 +97,7 @@ export const perform = async (commandid, params, cxt) => {
     return null;
   }
 
-  const {
-    phases
-  } = task;
+  const { phases } = task;
 
   const phaseFn = phases[phase];
 
@@ -119,4 +106,4 @@ export const perform = async (commandid, params, cxt) => {
   }
 
   return await phaseFn(params, cxt);
-}
+};
