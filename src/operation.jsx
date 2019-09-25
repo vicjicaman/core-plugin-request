@@ -12,16 +12,22 @@ export const waitFor = async (operation, status, until = true, tag) => {
     return;
   }
 
-  while ((operation.status !== status) === until && operation.status!=="stop") {
-    /*console.log(
+  while (
+    (operation.status !== status) === until &&
+    operation.status !== "stop" &&
+    operation.process !== null
+  ) {
+    console.log(
       tag +
-        " -- Waiting stopping for " +
+        " -- Waiting until( " +
+        until +
+        " ) " +
         status +
         "  " +
         operation.operationid +
         "--" +
         operation.status
-    );*/
+    );
     await wait(100);
   }
 };
@@ -47,7 +53,9 @@ const control = async (operation, cxt) => {
     console.log(operationid + ":NO PROCESS TO KILL");
   }
 
-  await waitFor(operation, "stopping", false, "TAIL");
+  if (operation.status !== "stop") {
+    await waitFor(operation, "stopping", false, "TAIL");
+  }
 };
 
 const executor = async (operation, handler, cxt) => {

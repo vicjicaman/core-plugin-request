@@ -77,6 +77,8 @@ export const register = (taskid, handlers, cxt) => {
         }
       },
       stop: async ({ operationid }, cxt) => {
+        console.log("STOP OPERATION " + operationid);
+
         const op = Operation.get(operationid);
         if (op) {
           Operation.stop(op, { ...cxt, params: op.params });
