@@ -17,7 +17,7 @@ export const waitFor = async (operation, status, until = true, tag) => {
     operation.status !== "stop" &&
     operation.process !== null
   ) {
-    console.log(
+    /*console.log(
       tag +
         " -- Waiting until( " +
         until +
@@ -27,7 +27,7 @@ export const waitFor = async (operation, status, until = true, tag) => {
         operation.operationid +
         "--" +
         operation.status
-    );
+    );*/
     await wait(100);
   }
 };
