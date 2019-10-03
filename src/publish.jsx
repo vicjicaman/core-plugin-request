@@ -44,7 +44,7 @@ export const publish = async (urlSrv, params, cxt) => {
       labels
     }, {
       responseType: 'stream',
-      timeout: 60 * 4 * 1000
+      timeout: 60 * 10 * 1000
     });
 
     let publishOutput = null;
