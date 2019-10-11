@@ -12,11 +12,10 @@ export const waitFor = async (operation, status, until = true, tag) => {
     return;
   }
 
-  while (
-    (operation.status !== status) === until &&
-    operation.status !== "stop" &&
-    operation.process !== null
-  ) {
+  while ((operation.status !== status) === until) {
+    if (operation.status === "stop" || operation.process === null) {
+      break;
+    }
     /*console.log(
       tag +
         " -- Waiting until( " +
@@ -28,29 +27,29 @@ export const waitFor = async (operation, status, until = true, tag) => {
         "--" +
         operation.status
     );*/
-    await wait(100);
+    await wait(10);
   }
 };
 
 const control = async (operation, cxt) => {
   const { operationid } = operation;
 
-  console.log("Operation in control: " + operation.status);
+  console.log(operationid + ":Operation in control: " + operation.status);
 
   await waitFor(operation, "stopping", true, "GATE");
 
-  console.log("Stop operation control: " + operation.status);
+  console.log(operationid + ":Stop operation control: " + operation.status);
 
   if (operation.process !== null) {
-    console.log(operationid + ":KILL OPERATION PROCESS SIGINT");
+    console.log(operationid + ":Kill operation process with SIGINT");
     const killingProcess = operation.process;
     if (killingProcess) {
       killTree(killingProcess.pid, "SIGINT");
       operation.process = null;
-      console.log(operationid + ":NULLIFY 5");
+      console.log(operationid + ":Operation process killed");
     }
   } else {
-    console.log(operationid + ":NO PROCESS TO KILL");
+    console.log(operationid + ":Promise based operation, no process to kill");
   }
 
   if (operation.status !== "stop") {
@@ -65,32 +64,27 @@ const executor = async (operation, handler, cxt) => {
   if (!spawnInfo) {
     operation.status = "stop";
     operation.process = null;
-    console.log(operationid + ":NULLIFY 3");
+    console.log(operationid + ":No process for the operation.");
     return;
   }
 
   const { promise: runtimePromise, process: runtimeProcess } = spawnInfo;
 
   operation.process = runtimeProcess;
-  console.log(
-    operationid + ":Started execution promise==============================="
-  );
-  if (operation.process) {
-    console.log(operationid + ":" + operation.process.pid);
-  }
 
   if (runtimeProcess) {
+    console.log(
+      operationid + ":Execution process based " + operation.process.pid
+    );
     await runtimePromise;
   } else {
+    console.log(operationid + ":Execution promise based");
     await runtimePromise(operation, cxt);
   }
 
-  console.log(
-    operationid + ":Finished execution promise<==============================="
-  );
   operation.status = "stop";
   operation.process = null;
-  console.log(operationid + ":NULLIFY 2");
+  console.log(operationid + ":Finished execution");
 };
 
 const loop = async function(operation, handler, cxt) {
@@ -99,14 +93,18 @@ const loop = async function(operation, handler, cxt) {
   while (operation.restart === true) {
     try {
       operation.status = "active";
+      operation.process = "pending...";
 
-      console.log(operationid + ":OPERATION_SETUP:" + operation.restart);
+      console.log(
+        operationid +
+          ":Starting operation control and execution:" +
+          operation.restart
+      );
       operation.restart = false;
       await Promise.all([
         control(operation, cxt),
         executor(operation, handler, cxt)
       ]);
-      //await waitFor(operation, "stop");
     } catch (e) {
       let handled = false;
       if (config && config.onError) {
@@ -160,17 +158,16 @@ export const start = (handler, params, config, cxt) => {
   return operation;
 };
 
-export const restart = (operation, cxt) => {
+export const restart = async (operation, cxt) => {
   if (operation) {
-    stop(operation, cxt);
-    operation.restart = true;
+    stop(operation, true, cxt);
+    await waitFor(operation, "stopping", false, "STOP_CURRENT");
   }
 };
 
-export const stop = (operation, cxt) => {
+export const stop = (operation, restart, cxt) => {
   if (operation) {
-    console.log("Stopping operation call");
-    operation.restart = false;
+    operation.restart = restart;
     operation.status = "stopping";
   }
 };
