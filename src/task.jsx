@@ -23,13 +23,15 @@ export const register = (taskid, handlers, cxt) => {
         const op = Operation.get(operationid);
 
         try {
-          await listen(
-            {
-              ...params,
-              operation: op
-            },
-            { ...cxt, params: op.params }
-          );
+          if (listen) {
+            await listen(
+              {
+                ...params,
+                operation: op
+              },
+              { ...cxt, params: op.params }
+            );
+          }
         } catch (err) {
           IO.sendEvent(
             "warning",
@@ -72,7 +74,7 @@ export const register = (taskid, handlers, cxt) => {
       restart: async ({ operationid }, cxt) => {
         const op = Operation.get(operationid);
         if (op.status === "active") {
-          Operation.restart(op, { ...cxt, params: op.params });
+          await Operation.restart(op, { ...cxt, params: op.params });
           await Operation.waitFor(op, "active", true, "RESTART");
         }
       },
@@ -81,7 +83,7 @@ export const register = (taskid, handlers, cxt) => {
 
         const op = Operation.get(operationid);
         if (op) {
-          Operation.stop(op, { ...cxt, params: op.params });
+          Operation.stop(op, false, { ...cxt, params: op.params });
           await Operation.waitFor(op, "stop", true, "STOP");
         }
       }
