@@ -23,7 +23,7 @@ export const register = (taskid, handlers, cxt) => {
         const op = Operation.get(operationid);
 
         try {
-          if (listen) {
+          if (op && listen) {
             await listen(
               {
                 ...params,
